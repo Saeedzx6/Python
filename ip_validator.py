@@ -1,0 +1,85 @@
+"""
+IP Address Validator and Parser Utility Module.
+"""
+
+import re
+from typing import Any, Dict, Optional, Tuple
+
+
+def validate_ip(ip: Any) -> bool:
+    """
+    Checks for valid IPv4 address format and ensures each octet is
+    within range [0, 255] without leading zeros.
+    """
+    if not isinstance(ip, str):
+        return False
+
+    parts = ip.split(".")
+    if len(parts) != 4:
+        return False
+
+    for part in parts:
+        if not part.isdigit():
+            return False
+        # Disallow leading zeros unless the octet is strictly '0'
+        if len(part) > 1 and part.startswith("0"):
+            return False
+        val = int(part)
+        if val < 0 or val > 255:
+            return False
+
+    return True
+
+
+def validate_ipv6(ip: Any) -> bool:
+    """
+    Checks if a given string is a valid IPv6 address.
+    """
+    if not isinstance(ip, str):
+        return False
+
+    ipv6_pattern = re.compile(
+        r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$"
+    )
+    return bool(ipv6_pattern.match(ip))
+
+
+def get_ip_info(ip: str) -> Optional[Dict[str, Any]]:
+    """
+    Returns detailed structural metadata for a valid IPv4 address.
+    """
+    if not validate_ip(ip):
+        return None
+
+    octets = [int(p) for p in ip.split(".")]
+    first = octets[0]
+
+    # Determine Address Class
+    if 1 <= first <= 126:
+        ip_class = "A"
+    elif 128 <= first <= 191:
+        ip_class = "B"
+    elif 192 <= first <= 223:
+        ip_class = "C"
+    elif 224 <= first <= 239:
+        ip_class = "D (Multicast)"
+    else:
+        ip_class = "E (Experimental)"
+
+    # Identify Private/Loopback flags
+    is_private = (
+        (first == 10)
+        or (first == 172 and 16 <= octets[1] <= 31)
+        or (first == 192 and octets[1] == 168)
+    )
+    is_loopback = first == 127
+
+    return {
+        "ip": ip,
+        "valid": True,
+        "class": ip_class,
+        "is_private": is_private,
+        "is_loopback": is_loopback,
+        "octets": octets,
+        "binary": ".".join(f"{o:08b}" for o in octets),
+    }
